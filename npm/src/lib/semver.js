@@ -10,6 +10,15 @@ export type Version = {
   patch: number | "x",
 };
 
+export function emptyVersion(): Version {
+  return {
+    range: '<=',
+    major: 'x',
+    minor: 'x',
+    patch: 'x'
+  }
+}
+
 export function copyVersion(ver: Version): Version {
   return {
     range: ver.range,
