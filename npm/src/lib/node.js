@@ -7,7 +7,16 @@ import * as node_path from 'path';
 import * as node_os from "os";
 import * as node_url from "url";
 
-export const child_process = node_child_process;
+export const child_process = {
+  ...node_child_process,
+  execAsync: function(cmd: string, opts: Object): Promise<string> {
+    return new Promise((res, rej) => {
+      node_child_process.exec(cmd, opts, (err, buffer) => {
+        if (err) {rej(err); } else {res(buffer.toString())}
+      })
+    });
+  },
+};
 export const fs = {
   createReadStream: node_fs.createReadStream,
   createWriteStream: node_fs.createWriteStream,
@@ -70,6 +79,13 @@ export const fs = {
   writeFile: function(f: string, data: string, opts?: Object): Promise<void> {
     return new Promise((res, rej) => {
       node_fs.writeFile(f, data, opts, (err) => {
+        if (err) { rej(err); } else { res(); }
+      });
+    });
+  },
+  link: function(from: string, to: string): Promise<void> {
+    return new Promise((res, rej) => {
+      node_fs.link(from, to, (err) => {
         if (err) { rej(err); } else { res(); }
       });
     });

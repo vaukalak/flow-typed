@@ -2,7 +2,7 @@
 import {getGHLibsAndFlowVersions, filterDefs, formatDefTable}
   from "../lib/libDef.js";
 import type {LibDefWithFlow} from "../lib/libDef.js";
-import {child_process, path} from '../lib/node'
+import {child_process, path, child_process} from '../lib/node'
 
 const P = Promise;
 
@@ -10,33 +10,45 @@ export const name = "search";
 export const description =
   "Performs a simple search (by name) of available libdefs";
 
-function findFlowVersion(): string {
-  const nodeModulesBin = path.resolve('node_modules', '.bin')
+export async function findFlowVersion(
+  pwd?: string
+): Promise<string> {
+  const _pwd = pwd || __dirname
+  const nodeModulesBin = path.resolve(_pwd, 'node_modules', '.bin')
   const _path = `${nodeModulesBin}:${process.env.PATH}`
 
   function fail() {
     console.error('Couldn\'t identify your flow version. Please make sure ' +
     'flow is installed and in your PATH, or flow-bin is installed ' +
     'in your project.')
-    process.exit(-1)
+    return 'No version found'
   }
 
-  let output = ''
+  let output : string = ''
 
   try {
-    output = child_process.execSync('flow version', {
+    output = await child_process.execAsync('flow version', {
       env: {PATH: _path}
-    }).toString()
+    })
   } catch(e) {
-    fail()
+    return fail()
   }
 
   const matches = output.match(/.*version (.*)\n$/)
   if (!matches || !matches[1]) {
-    fail()
+    return fail()
   } else {
     return matches[1]
   }
+}
+
+export async function searchVersions(
+  searchTerm: string,
+  flowVersion?: string
+) {
+  const defs = await getGHLibsAndFlowVersions();
+  const filtered = filterDefs(searchTerm, defs, flowVersion);
+  return filtered;
 }
 
 export async function run(args: {}): Promise<number> {
@@ -44,11 +56,9 @@ export async function run(args: {}): Promise<number> {
     console.error('Please provide a term for which to search!')
     return 1;
   }
-
-  const flowVersion = args.flowVersion || findFlowVersion()
-  const term = args._[1];
-  const defs = await getGHLibsAndFlowVersions();
-  const filtered = filterDefs(term, defs, args.flowVersion || undefined)
-  console.log(formatDefTable(filtered))
+  const term = args._[1]
+  const flowVersion = args.flowVersion || await findFlowVersion()
+  const versions = await searchVersions(term, flowVersion)
+  console.log(formatDefTable(versions))
   return 0;
 };
